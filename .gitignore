@@ -1,6 +1,6 @@
 .idea
 .php_cs.cache
-var/
-vendor/
-docker_volumes/
+var
+vendor
+docker_volumes
 
