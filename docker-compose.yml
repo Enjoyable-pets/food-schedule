@@ -1,0 +1,62 @@
+version: '3.5'
+services:
+    mysql:
+        container_name: food_sched_mysql
+        image: mysql:8.0
+        restart: on-failure
+        command: ["--default-authentication-plugin=mysql_native_password"]
+        env_file:
+            - .env
+        environment:
+            MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+            MYSQL_DATABASE: ${MYSQL_DATABASE}
+            MYSQL_USER: ${MYSQL_USER}
+            MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+        ports:
+            - "3308:3306"
+        networks:
+            default:
+                ipv4_address: 172.07.0.2
+        volumes:
+            - ./docker_volumes/mysql/data:/var/lib/mysql
+            - ./docker/build/mysql/conf:/etc/mysql/conf.d
+    php:
+        container_name: food_sched_php
+        build: ./docker/build/php
+        tty: true
+        depends_on:
+            - mysql
+        expose:
+            - '9001'
+        env_file: .env.dev.local
+        environment:
+            XDEBUG_CONFIG: remote_host=xdebug.lan #remote_log=/tmp/xdebug.log
+        extra_hosts:
+            - xdebug.lan:${HOST_IP}
+        networks:
+            default:
+                ipv4_address: 172.07.0.3
+        volumes:
+            - ".:/var/www/symfony/:cached"
+    web:
+        container_name: food_sched_nginx
+        image: nginx:latest
+        restart: on-failure
+        ports:
+            - "7000:80"
+        networks:
+            default:
+                ipv4_address: 172.07.0.4
+        volumes:
+            - "./:/var/www/symfony/:cached"
+            - ./docker/build/nginx/symfony.conf:/etc/nginx/conf.d/default.conf
+        depends_on:
+            - php
+            - mysql
+
+networks:
+    default:
+        driver: bridge
+        ipam:
+            config:
+                - subnet: 172.07.0.0/16
